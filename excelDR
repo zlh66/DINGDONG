@@ -1,0 +1,273 @@
+# excel数据导入
+- 前台
+<table style="text-align: center; width: 90%; margin: 0px 50px 0px 0px">
+            <tr>
+            <td>
+                <asp:FileUpload ID="fileImport" runat="server" /></td>
+                <td>
+                    <asp:Button ID="NubDao" runat="server" Text="导入" onclick="NubDao_Click" Width="80px"  
+                        Style="width: 80px" /></td>
+                    <td><a href="项目模板.xls">项目模板>></a></td>
+                <td>
+                    <%--<asp:Button ID="BackBt" runat="server" Text="返回" OnClick="BackBt_Click" Style="width: 10%;
+                        height: 25px" />--%>
+                         <a href='examineList.aspx'>返回上一页面>></a>
+                </td>
+            </tr>
+</table>
+- 后台
+protected void NubDao_Click(object sender, EventArgs e)
+        {
+            bool iserror = false;
+            string aa1 = "";
+            string aa2 = "";
+            string aa3 = "";
+            string aa4 = "";
+            string aa5 = "";
+            string aa6 = "";
+            if (Session["UserID"] != null && Session["UserID"].ToString() != "")
+            {
+                 userid = Session["UserID"].ToString();
+                 MyHMXBLL.DelectErrorlist(userid);
+            }
+            else
+            {
+                Response.Write("<script>alert('没有获取到用户信息（id）')</script> ");
+                return;//当无userid时,返回
+            }
+            if (fileImport.HasFile == false)//HasFile用来检查FileUpload是否有指定文件
+            {
+                Response.Write("<script>alert('请您选择Excel文件')</script> ");
+                return;//当无文件时,返回
+            }
+            string IsXls = System.IO.Path.GetExtension(fileImport.FileName).ToString().ToLower();//System.IO.Path.GetExtension获得文件的扩展名
+            if (IsXls != ".xls" && IsXls != ".xlsx")
+            {
+                Response.Write("<script>alert('只可以选择Excel文件')</script>");
+                return;//当选择的不是Excel文件时,返回
+            }
+            string filename = fileImport.FileName;              //获取Execle文件名  DateTime日期函数
+            string savePath = Server.MapPath("../FileData/" + filename);//Server.MapPath 获得虚拟服务器相对路径
+            fileImport.SaveAs(savePath);                        //SaveAs 将上传的文件内容保存在服务器上
+            DataTable ds = ExcelSqlConnection(savePath);           //调用自定义方法
+            DataRow[] dr = ds.Select();            //定义一个DataRow数组
+            int rowsnum = ds.Rows.Count;
+            int successly = 0;
+            string HtmlConent = string.Empty;
+            if (rowsnum == 0)
+            {
+                Response.Write("<script>alert('Excel表为空表,无数据!')</script>");   //当Excel表为空时,对用户进行提示
+            }
+            else
+            {
+                string _Result = "";
+                for (int a = 0; a < dr.Length; a++)
+                {
+
+                    int vare = a + 1;
+                    try
+                    {
+                        string ErrorMessage = "";
+                        aa1 = dr[a][0].ToString();
+                        aa2 = dr[a][1].ToString();
+                        aa3 = dr[a][2].ToString();
+                        aa4 = dr[a][3].ToString();
+                        aa5 = dr[a][4].ToString();
+                        string pattern = @"^\d*$";
+                        Match IsintSort = Regex.Match(dr[a][3].ToString(), pattern);
+                       // Match IsintSort2 = Regex.Match(dr[a][5].ToString(), pattern);
+                        if (string.IsNullOrEmpty(aa1))
+                        {
+                            ErrorMessage = "问题不能为空";
+                            //insert into 临时表 session["userid"] ,i+1,什么不能为空
+                            int t = MyHMXBLL.AddErrorlist(userid, vare, ErrorMessage);
+                            iserror = true;
+                        }
+
+                        if (string.IsNullOrEmpty(aa2) || (aa2 != "单选" && aa2 != "多选" && aa2 != "开放"))
+                        {
+                            ErrorMessage = "问题类型不能为空或只能填写单选或多选或开放";
+                            int t = MyHMXBLL.AddErrorlist(userid, vare, ErrorMessage);
+                            //insert into 临时表 session["userid"] ,i+1,什么不能为空或只能填写xx
+                            iserror = true;
+                        }
+                        if (string.IsNullOrEmpty(aa3) || (aa3 != "是" && aa3 != "否"))
+                        {
+                            ErrorMessage = "是否必填不能为空或只能填写是或否";
+                            int t = MyHMXBLL.AddErrorlist(userid, vare, ErrorMessage);
+                            iserror = true;
+                        }
+                        if (string.IsNullOrEmpty(aa4) || !IsintSort.Success)
+                        {
+                            ErrorMessage = "问题排序不能为空或只能填写数字";
+                            int t = MyHMXBLL.AddErrorlist(userid, vare, ErrorMessage);
+                            iserror = true;
+                        }
+                        if (aa5 != "" && aa2 == "开放")
+                        {
+                            ErrorMessage = "问题类型为开放时答案为空";
+                            int t = MyHMXBLL.AddErrorlist(userid, vare, ErrorMessage);
+                            iserror = true;
+                        }
+                        if (string.IsNullOrEmpty(aa5) && (aa2 == "单选" || aa2 == "多选"))
+                        {
+                            ErrorMessage = "问题类型为单选或多选时答案不能为空";
+                            int t = MyHMXBLL.AddErrorlist(userid, vare, ErrorMessage);
+                            iserror = true;
+                        }
+                        //if (string.IsNullOrEmpty(aa6) || !IsintSort2.Success)
+                        //{
+                        //    ErrorMessage = "答案排序不能为空或只能填写数字";
+                        //    int t = MyHMXBLL.AddErrorlist(userid, vare, ErrorMessage);
+                        //    iserror = true;
+                        //}
+                    }
+                    catch (Exception)
+                    {
+
+                        throw;
+                    }
+
+                }
+
+                if (!iserror)
+                {
+                    for (int i = 0; i < dr.Length; i++)
+                    {
+                        try
+                        {
+                            MODEL.Question MyQuestion = new MODEL.Question();
+                            MODEL.Answer MyAnswer = new MODEL.Answer();
+                            int count = 0;
+                            //前面除了你需要在建立一个“upfiles”的文件夹外，其他的都不用管了，你只需要通过下面的方式获取Excel的值，然后再将这些值用你的方式去插入到数据库里面
+                            MyQuestion.Datatype = Datatype.ToString();
+                            MyQuestion.Dataid = Dataid.ToString();
+                            MyQuestion.Title = dr[i][0].ToString();
+                                MyQuestion.Questiontype = dr[i][1].ToString();//类型
+                                MyQuestion.Ismust = dr[i][2].ToString();//是否
+                                MyQuestion.Sort = Convert.ToInt32(dr[i][3]);//排序
+                                MyQuestion.Score = 0;
+                                MyQuestion.Flag = "0";
+                                MyQuestion.Createtime = DateTime.Now.ToString();
+                                if (Session["UserID"] != null && Session["UserID"].ToString() != "")
+                                {
+                                    MyQuestion.Createuser = Session["UserID"].ToString();
+                                }
+                                else
+                                {
+                                    MyQuestion.Createuser = "";
+                                }
+                                MyQuestion.Flag = "0";
+                                //返回新增的问题id
+                                count = MyHMXBLL.NewAddQuestion(MyQuestion);
+
+                                if (count > 0)
+                                {
+                                    int jd=0;
+                                    string daan = dr[i][4].ToString();
+                                    //新增答案表
+                                    string[] array = Regex.Split(daan, @"@@", RegexOptions.IgnoreCase);
+                                    for (int ff = 0; ff < array.Length; ff++)
+                                    {
+                                        jd= jd+1;
+                                        MyAnswer.Questionid = count.ToString();
+                                        MyAnswer.Dataid = Dataid.ToString();
+                                        MyAnswer.Datatype = Datatype.ToString();
+                                      //  MyAnswer.Sort = Convert.ToInt32(dr[i][5]);//答案排序
+                                        MyAnswer.Sort = jd;
+                                        string subStr = "[T]";
+                                        if (array[ff].Contains(subStr))
+                                        {
+                                            MyAnswer.Title = array[ff].Substring(0, array[ff].Length - 3);//答案
+                                            MyAnswer.Istrue = "T";
+                                        }
+                                        else
+                                        {
+                                            MyAnswer.Title = array[ff].Substring(0, array[ff].Length);//答案
+                                            MyAnswer.Istrue = "F";//是否正确
+                                        }
+                                        if (Session["UserID"] != null && Session["UserID"].ToString() != "")
+                                        {
+                                            MyAnswer.Createuser = Session["UserID"].ToString();
+                                        }
+                                        else
+                                        {
+                                            MyAnswer.Createuser = "";
+                                        }
+
+                                        MyAnswer.Flag = "0";
+                                        MyAnswer.Createtime = DateTime.Now.ToString();
+                                        int jj = MyHMXBLL.AddAnswer(MyAnswer);
+                                    }
+
+                                }
+                            if (count > 0)
+                            {
+                                successly++;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _Result = _Result + ex.InnerException + "\\n\\r";
+                        }
+                       
+                    }
+                    if (successly == rowsnum)
+                    {
+                        string strmsg = "Excle表导入成功!";
+                        System.Web.HttpContext.Current.Response.Write("<Script Language='JavaScript'>window.alert('" + strmsg + "');</script>");
+                        BindError();
+                        Bind();
+                    }
+                    else
+                    {
+                        Response.Write("<script>alert('Excle表导入失败!');</script>");
+                        BindError();
+                    }
+                }
+                else
+                {
+                    Response.Write("<script>alert('Excle表导入失败!');</script>");
+                    BindError();
+                }
+
+            }
+        }
+        
+
+
+
+        public System.Data.DataTable ExcelSqlConnection(string fileUrl)
+          {
+              //支持.xls和.xlsx，即包括office2010等版本的   HDR=Yes代表第一行是标题，不是数据；
+             string cmdText = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source={0};Extended Properties='Excel 12.0; HDR=Yes; IMEX=1'";
+            
+              System.Data.DataTable dt = null;
+              //建立连接
+              OleDbConnection conn = new OleDbConnection(string.Format(cmdText, fileUrl));
+              try
+             {
+                  //打开连接
+                  if (conn.State == ConnectionState.Broken || conn.State == ConnectionState.Closed)
+                  {
+                      conn.Open();
+                  }
+  
+                  System.Data.DataTable schemaTable = conn.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, null);
+                  string strSql = "select * from [Sheet1$]";
+                  OleDbDataAdapter da = new OleDbDataAdapter(strSql, conn);
+                  DataSet ds = new DataSet();
+                  da.Fill(ds);
+                  dt = ds.Tables[0];
+                  return dt;
+              }
+              catch (Exception exc)
+              {
+                  throw exc;
+              }
+              finally
+              {
+                  conn.Close();
+                  conn.Dispose();
+              }
+          }
