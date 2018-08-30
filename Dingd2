@@ -1,0 +1,94 @@
+#ABNF 1.0 UTF-8;
+business CiscoTest;
+#include "pre_word.lst"
+root main;
+#ABNF HEAD-END;
+
+//***********！！！！*****可以测试*****轩辕编辑话术，如要大量修改，让她先备份一下*************************
+//$_ti_ch_<>   通配符：0 到任意多个字符；不支持自定义权重，纯粹用于过滤
+
+//业务唤醒前缀词
+$pre_word = ($u_LST_pre_word);
+
+/*业务唤醒名称，音箱输入："打开考拉FM"，进入应用，建议做容错处理，如
+ "$l_bizname{bizname%考拉}=考拉[fm|FM]"，
+ "$l_bizname{bizname%e袋洗} = (一|E|e|1|以|一)(袋洗|代洗|代谢|戴茜|代新)"
+*/
+$l_bizname{bizname} = (永|勇)(修|肖|销)(技术|计数|基数|级数);
+
+/*业务唤醒,唤醒业务方式如下，
+ 1、前缀词+业务唤醒词；
+ 2、前缀词+业务唤醒词+用户意图；
+ 3、进入业务流程后，之后用户可以直接交互，不需要加业务唤醒词
+下面是打开小新考试
+*/
+$c_bizname = [$pre_word]$l_bizname;
+
+$want = 要|想|想要;
+$query{operation%query} = (查|查询|看| 知道 )[一下];
+
+//------------我们模仿的最强大脑开始---------------------
+//语气词
+$post_word = 啦|吧|吗|嘛|了[吧]|哇|哦|呀|耶|啊|哎|唉;
+
+$this_question = 这[一|亿][个][问|问题];
+
+$xy_answer_yes{xy_answer_yes}  = (证|正)确[的|滴|地|得|德] | (对|队|四|试|是)[的|滴|地|得|德|你] | 嗯 | 嗯嗯 | yes | 证券;
+$xy_answer_no{xy_answer_no}  = 瞎扯|扯淡| no|错误 | (不对|不是|部队|不堆|错误|错|搓)[的|滴|地|得|德] | 错[了|不|啦] ;
+$prepare_ready{prepare_ready} = [$_ti_ch_<5->]([我][准备]好了|开始)[$post_word];
+$question_again{question_again} = (([在|再|载](来|说|读)[一|亿][遍|回|轮|次|下])|没听(清|懂|见))[$post_word];
+$xy_answer_next{xy_answer_next}=([在|再|寨]下一[个|道][问题|题|题目]|继续|过|[我][还是|依然]不(知道|晓得|清楚)([了])|[我]想不起来|[我]不会[$this_question]|跳过[$this_question])[$post_word];
+$exit_game{exit_game} = ([我]不[想](玩|用)[儿][游戏|考试|答题][了] | 再见|[你先]休息吧|退出[游戏|考试]|(不|别)[猜|放|拆|播|练|念|说]|(停止|关闭|放弃)[这次|本次|这一场|这场][游戏|考试]|[我]不[想]继续[游戏|考试][了]|再见|拜拜|白白|算了)[$post_word];
+//识别退出  is_end=true;
+$xy_answer_all{xy_answer_all}= 全(选|对|部);
+
+/*
+[$dev_name]这是啥呢？
+*/
+//---------------我们模仿的最强大脑结束--------------------
+
+$city{city} = 北京 | 上海 | 合肥;
+$datetime{date} = 今天 | 明天 | 后天 | 大后天;
+$weather = 天气 | 气候;
+
+$case1 = $city[的] $datetime[的];
+$case2 = $datetime[的] $city[的];
+
+$xyexam = 考试 | 答题|参加考试;
+
+
+//我们目前只编了ABCD  e稍微写了一点
+//答案  单选
+$xy_answer_a{xy_answer_a} = (a|A | 哎|AI|癌)[$post_word];
+$xy_answer_b{xy_answer_b}  = (b|B |必)[$post_word];
+$xy_answer_c{xy_answer_c}  = (c|C | 西)[$post_word];
+$xy_answer_d{xy_answer_d}  = (d|D|第)[$post_word];
+$xy_answer_e{xy_answer_e}  = (e|E|亿)[$post_word];
+$xy_answer_f{xy_answer_f}  = (f|F| 第六[个]|挨夫|爱抚|爱夫)[$post_word];
+//答案 多选  2个选项
+$xy_answer_ab{xy_answer_ab}  = (($xy_answer_a $xy_answer_b)|abb|baby)[$post_word];
+//$xy_answer_ab{xy_answer_ab} = (ab|AB | 哎币|AI币|癌币|A和B|abb|baby)[$post_word];
+$xy_answer_ac{xy_answer_ac} = ($xy_answer_a $xy_answer_c)[$post_word];
+$xy_answer_bc{xy_answer_bc} =($xy_answer_b $xy_answer_c)[$post_word];
+//答案 多选  3个选项   只考虑了ABCD
+$xy_answer_abc{xy_answer_abc} = ($xy_answer_ab $xy_answer_c)[$post_word];
+$xy_answer_abd{xy_answer_abd} = ($xy_answer_ab $xy_answer_d)[$post_word];
+$xy_answer_acd{xy_answer_acd} = ($xy_answer_a $xy_answer_c $xy_answer_d)[$post_word];
+//答案 多选  4个选项   目前不完全，尚未写完所有的情况  考虑ABCDE
+$xy_answer_abcd{xy_answer_abcd} = ($xy_answer_abc $xy_answer_d)[$post_word];
+$xy_answer_abce{xy_answer_abce} = ($xy_answer_abc $xy_answer_e)[$post_word];
+$xy_answer_abde{xy_answer_abde} = ($xy_answer_abd $xy_answer_e)[$post_word];
+
+//  we are working now  0605
+
+
+//降噪  通配符 1-10个
+$noise{noise}=$_ti_ch_<1-10>;
+//通配符写答案  问客服，她在想怎么写呢--这是回复，说不能用，我们还没有仔细看具体用法，需要恢复我们之前的编辑
+//$xy_answer_text{xy_answer_text} =$xy_answer_abcd{xy_answer_abcd}|$xy_answer_abce{xy_answer_abce} ;
+//$xy_answer_temp{xy_answer_temp}=$_ti_filler_ <$xy_answer_text,(0-8)>;
+
+//变量整合，可以返回在slots里面  注意顺序  $noise放在最后
+//$main{biz:ciscoic} = $_ti_ch_<3->(([$c_bizname]$_ti_ch_<2->$ask_content)|$xy_content|$c_bizname|$xy_answer_1|$xy_answer_2) ;
+$main{biz:CiscoTest} = $_ti_ch_<3->(([$c_bizname]$_ti_ch_<2->$c_bizname|$exit_game|$prepare_ready|$xy_answer_next|$question_again|$xy_answer_yes|$xy_answer_no|$xy_answer_all|$xy_answer_abcd|$xy_answer_abce|$xy_answer_abde|$xy_answer_abc|$xy_answer_abd|$xy_answer_acd|$xy_answer_ab|$xy_answer_ac|$xy_answer_bc|$xy_answer_a|$xy_answer_b|$xy_answer_c|$xy_answer_d|$xy_answer_e|$xy_answer_f|$noise))$_ti_ch_<5-> ;
+
