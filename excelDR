@@ -1,5 +1,6 @@
 # excel数据导入
 - 前台
+'''
 <table style="text-align: center; width: 90%; margin: 0px 50px 0px 0px">
             <tr>
             <td>
@@ -15,7 +16,9 @@
                 </td>
             </tr>
 </table>
+'''
 - 后台
+'''
 protected void NubDao_Click(object sender, EventArgs e)
         {
             bool iserror = false;
@@ -271,3 +274,4 @@ protected void NubDao_Click(object sender, EventArgs e)
                   conn.Dispose();
               }
           }
+'''
